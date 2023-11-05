@@ -1,0 +1,45 @@
+# Bu Deployment, 'sales-system' adında bir namespace içinde 'sales' adıyla bir pod grubunu yönetmek için kullanılır.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales
+  namespace: sales-system
+spec:
+  selector:
+    matchLabels:
+      app: sales
+  replicas: 1 # Sadece bir replika oluşturulacak.
+  strategy:
+    type: Recreate # Yeni bir Deployment olduğunda önceki podları silip yeniden oluşturur.
+  template:
+    metadata:
+      labels:
+        app: sales
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet # DNS çözünürlüğü için kümeye özel politika kullanılır ve host'un networkü kullanılır.
+      hostNetwork: true # Pod, ev sahibi makinenin ağını kullanacak şekilde ayarlanmıştır.
+      containers:
+        - name: sales-api
+          resources:
+            limits:
+              cpu: "2000m" # Container için en fazla 2 tam CPU çekirdeği kullanılabilir.
+            requests:
+              cpu: "1000m" # Başlangıçta container için 1 tam CPU çekirdeği ayrılacak.
+---
+# Bu Service, 'sales' uygulamasının podlarına ağ üzerinden erişimi yönetir.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales-service
+  namespace: sales-system
+spec:
+  selector:
+    app: sales # Bu Service, 'app: sales' etiketine sahip podlara trafik yönlendirir.
+  type: ClusterIP # Bu servis tipi, küme içi erişim için kullanılır ve harici bir IP adresi atamaz.
+  ports:
+    - name: sales-api
+      port: 3000 # Dış dünyadan gelen 3000 portuna gelen trafik, pod içindeki sales-api portuna yönlendirilecek.
+      targetPort: sales-api
+    - name: sales-api-debug
+      port: 4000 # Dış dünyadan gelen 4000 portuna gelen trafik, pod içindeki sales-api-debug portuna yönlendirilecek.
+      targetPort: sales-api-debug

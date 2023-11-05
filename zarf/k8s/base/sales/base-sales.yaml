@@ -1,0 +1,58 @@
+# Bu manifest, 'sales-system' adında yeni bir Namespace oluşturur.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sales-system
+---
+# 'sales' adında bir Deployment yaratır. Bu Deployment, 'sales-system' namespace içinde çalışacak.
+# 'app: sales' etiketiyle eşleşen podları yönetir ve ölçeklendirir.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales
+  namespace: sales-system
+spec:
+  selector:
+    matchLabels:
+      app: sales
+  template:
+    metadata:
+      labels:
+        app: sales
+    spec:
+      # Pod'un zarif bir şekilde kapanması için beklenilecek süreyi belirler (60 saniye).
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: sales-api
+          # 'sales-api' container'ı için kullanılacak Docker imajı.
+          image: sales-api-image
+          # Container'da açılacak portlar; biri uygulama için (3000) diğeri debug için (4000).
+          ports:
+            - name: sales-api
+              containerPort: 3000
+            - name: sales-api-debug
+              containerPort: 4000
+---
+# 'sales-service' adında bir Service tanımlar. Bu Service, 'sales-system' namespace içinde yer alır.
+# Bu Service, podlar arası ve dış dünya ile iletişim için kullanılır.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales-service
+  namespace: sales-system
+spec:
+  # Service'in, 'app: sales' etiketli podlara trafik yönlendireceğini belirtir.
+  selector:
+    app: sales
+  # Service tarafından dinlenen portlar ve bu portların podlardaki hedef portları.
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 3000
+    - name: debug
+      protocol: TCP
+      port: 8080
+      targetPort: 4000
+  # Service tipini belirler, 'ClusterIP' küme içi iletişim için kullanılır.
+  type: ClusterIP
