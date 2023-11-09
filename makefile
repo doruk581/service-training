@@ -7,6 +7,10 @@
 # curl -il sales-service.sales-system.svc.cluster.local:4000/debug/vars
 # curl -il sales-service.sales-system.svc.cluster.local:3000/test
 
+status:
+	curl -il sales-service.sales-system.svc.cluster.local:3000/status
+status-local:
+	curl -il localhost:3000/status
 
 # app/services/sales-api/main.go dosyasını çalıştırır ve app/tooling/logfmt/main.go ile log formatlarını düzenler.
 run:
@@ -84,6 +88,9 @@ dev-down:
 	telepresence quit -s
 	kind delete cluster --name $(KIND_CLUSTER)
 
+dev-kind-down:
+	kind delete cluster --name $(KIND_CLUSTER)
+
 # : Kubernetes cluster'ında çalışan node'lar, servisler ve pod'lar hakkında bilgi verir.
 dev-status:
 	kubectl get nodes -o wide
@@ -129,3 +136,27 @@ dev-update: all dev-load dev-restart
 
 # Tüm imajları yükler ve Kubernetes kaynaklarını uygular.
 dev-update-apply: all dev-load dev-apply
+
+# ===============================================
+
+yang-up:
+	kind create cluster \
+		--image kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1 \
+		--name $(KIND_CLUSTER) \
+		--config zarf/k8s/dev/kind-config.yaml
+	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
+
+yang-load:
+	kind load docker-image $(TELEPRESENCE) --name $(KIND_CLUSTER)
+
+yang-tel:
+	telepresence --context=kind-$(KIND_CLUSTER) helm install
+
+yang-con:
+	sudo telepresence --context=kind-$(KIND_CLUSTER) connect
+
+yang-quit:
+	telepresence quit -s
+
+yang-down:
+	kind delete cluster --name $(KIND_CLUSTER)
